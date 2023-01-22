@@ -1,0 +1,67 @@
+{
+	"Generic Access Profile": {
+		"uuid": "00001800-0000-1000-8000-00805f9b34fb",
+		"characteristics": {
+			"Device Name": { "uuid": "00002a00-0000-1000-8000-00805f9b34fb", "properties": ["read"] },
+			"Appearance": { "uuid": "00002a01-0000-1000-8000-00805f9b34fb", "properties": ["read"] },
+			"Peripheral Preferred Connection Parameters": { "uuid": "00002a04-0000-1000-8000-00805f9b34fb", "properties": ["read"] },
+			"Central Address Resolution": { "uuid": "00002aa6-0000-1000-8000-00805f9b34fb", "properties": ["read"] }
+		}
+	},
+	"Generic Attribute Profile": {
+		"uuid": "00001801-0000-1000-8000-00805f9b34fb",
+		"characteristics": { "Service Changed": { "uuid": "00002a05-0000-1000-8000-00805f9b34fb", "properties": ["indicate"] } }
+	},
+	"Heart Rate": {
+		"uuid": "0000180d-0000-1000-8000-00805f9b34fb",
+		"characteristics": {
+			"Heart Rate Measurement": { "uuid": "00002a37-0000-1000-8000-00805f9b34fb", "properties": ["notify"] },
+			"Body Sensor Location": { "uuid": "00002a38-0000-1000-8000-00805f9b34fb", "properties": ["read"] }
+		}
+	},
+	"User Data": {
+		"uuid": "0000181c-0000-1000-8000-00805f9b34fb",
+		"characteristics": {
+			"Database Change Increment": { "uuid": "00002a99-0000-1000-8000-00805f9b34fb", "properties": ["read", "write"] },
+			"User Index": { "uuid": "00002a9a-0000-1000-8000-00805f9b34fb", "properties": ["read"] },
+			"User Control Point": { "uuid": "00002a9f-0000-1000-8000-00805f9b34fb", "properties": ["write", "indicate"] },
+			"First Name": {
+				"uuid": "00002a8a-0000-1000-8000-00805f9b34fb",
+				"properties": ["read", "write", "extended-properties", "reliable-writes"]
+			},
+			"Last Name": {
+				"uuid": "00002a90-0000-1000-8000-00805f9b34fb",
+				"properties": ["read", "write", "extended-properties", "reliable-writes"]
+			},
+			"Age": { "uuid": "00002a80-0000-1000-8000-00805f9b34fb", "properties": ["read", "write"] },
+			"Gender": { "uuid": "00002a8c-0000-1000-8000-00805f9b34fb", "properties": ["read", "write"] },
+			"Weight": { "uuid": "00002a98-0000-1000-8000-00805f9b34fb", "properties": ["read", "write"] },
+			"Height": { "uuid": "00002a8e-0000-1000-8000-00805f9b34fb", "properties": ["read", "write"] },
+			"Language": { "uuid": "00002aa2-0000-1000-8000-00805f9b34fb", "properties": ["read", "write"] }
+		}
+	},
+	"Device Information": {
+		"uuid": "0000180a-0000-1000-8000-00805f9b34fb",
+		"characteristics": {
+			"Manufacturer Name String": { "uuid": "00002a29-0000-1000-8000-00805f9b34fb", "properties": ["read"] },
+			"Model Number String": { "uuid": "00002a24-0000-1000-8000-00805f9b34fb", "properties": ["read"] },
+			"Serial Number String": { "uuid": "00002a25-0000-1000-8000-00805f9b34fb", "properties": ["read"] },
+			"Hardware Revision String": { "uuid": "00002a27-0000-1000-8000-00805f9b34fb", "properties": ["read"] },
+			"Firmware Revision String": { "uuid": "00002a26-0000-1000-8000-00805f9b34fb", "properties": ["read"] },
+			"Software Revision String": { "uuid": "00002a28-0000-1000-8000-00805f9b34fb", "properties": ["read"] },
+			"System ID": { "uuid": "00002a23-0000-1000-8000-00805f9b34fb", "properties": ["read"] }
+		}
+	},
+	"Battery Service": {
+		"uuid": "0000180f-0000-1000-8000-00805f9b34fb",
+		"characteristics": { "Battery Level": { "uuid": "00002a19-0000-1000-8000-00805f9b34fb", "properties": ["read", "notify"] } }
+	},
+	"Unknown": {
+		"uuid": "fb005c80-02e7-f387-1cad-8acd2d8df0c8",
+		"characteristics": { "Unknown": { "uuid": "fb005c82-02e7-f387-1cad-8acd2d8df0c8", "properties": ["notify"] } }
+	},
+	"Polar Electro Oy": {
+		"uuid": "0000feee-0000-1000-8000-00805f9b34fb",
+		"characteristics": { "Unknown": { "uuid": "fb005c53-02e7-f387-1cad-8acd2d8df0c8", "properties": ["write-without-response", "write"] } }
+	}
+}
