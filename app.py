@@ -1,7 +1,7 @@
 from bleak import BleakClient, BleakScanner
 from rich import console, inspect, panel
 import asyncio
-import json
+import signal
 
 from config.polar_profile import polar_profile
 
@@ -12,9 +12,16 @@ BATTERY_LEVEL_UUID = polar_profile["Battery Service"]["characteristics"]["Batter
 
 HEARTRATE_MEASUREMENT_UUID = polar_profile["Heart Rate"]["characteristics"]["Heart Rate Measurement"]["uuid"]
 
+stop = False
 
-def heartrate_handler(sender, data):
-    pass
+
+def signal_handler(signum, frame):
+    global stop
+    stop = True
+
+
+signal.signal(signal.SIGINT, signal_handler)
+
 
 async def main():
     c = console.Console()
@@ -44,8 +51,42 @@ async def main():
             )
         )
 
+        hr_data, hr_changed = None, False
+
+        async def heartrate_handler(sender, data):
+            nonlocal hr_data, hr_changed
+
+            hr_data = data
+            hr_changed = True
+
         await polar_client.start_notify(HEARTRATE_MEASUREMENT_UUID, heartrate_handler)
 
+        while True:
+            if hr_changed == True:
+                hr_changed = False
 
-if __name__ == "__main__":
-    asyncio.run(main())
+                hr = int.from_bytes(hr_data[1:2], byteorder="little", signed=False)
+
+                rr_intervals = []
+                if len(list(hr_data)) > 2:
+                    i = 2
+                    while i < len(list(hr_data)):
+                        rr_interval_raw = int.from_bytes(hr_data[i:i+2], byteorder="little", signed=False)
+                        rr_intervals.append(rr_interval_raw / 1024.0 * 1000.0)
+
+                        i += 2
+
+                if not rr_intervals:
+                    c.log(f"HR Measurement: {hr} bpm")
+                else:
+                    c.log(f"HR Measurement: {hr} bpm, RR Interval(s): {', '.join(str(rr_interval) for rr_interval in rr_intervals)} received.")
+            else:
+                await asyncio.sleep(0.1)
+
+            if stop == True:
+                break
+
+        await polar_client.stop_notify(HEARTRATE_MEASUREMENT_UUID)
+
+
+asyncio.run(main())
