@@ -4,6 +4,7 @@ import asyncio
 import signal
 
 from config.polar_profile import polar_profile
+import utils
 
 
 DEVICE_NAME_UUID = polar_profile["Generic Access Profile"]["characteristics"]["Device Name"]["uuid"]
@@ -23,7 +24,19 @@ def signal_handler(signum, frame):
 signal.signal(signal.SIGINT, signal_handler)
 
 
+hr_data, hr_changed = None, False
+
+
+async def heartrate_handler(sender, data):
+    global hr_data, hr_changed
+
+    hr_data = data
+    hr_changed = True
+
+
 async def main():
+    global hr_data, hr_changed
+
     c = console.Console()
 
     devices = await BleakScanner.discover()
@@ -51,30 +64,13 @@ async def main():
             )
         )
 
-        hr_data, hr_changed = None, False
-
-        async def heartrate_handler(sender, data):
-            nonlocal hr_data, hr_changed
-
-            hr_data = data
-            hr_changed = True
-
         await polar_client.start_notify(HEARTRATE_MEASUREMENT_UUID, heartrate_handler)
 
         while True:
             if hr_changed == True:
                 hr_changed = False
 
-                hr = int.from_bytes(hr_data[1:2], byteorder="little", signed=False)
-
-                rr_intervals = []
-                if len(list(hr_data)) > 2:
-                    i = 2
-                    while i < len(list(hr_data)):
-                        rr_interval_raw = int.from_bytes(hr_data[i:i+2], byteorder="little", signed=False)
-                        rr_intervals.append(rr_interval_raw / 1024.0 * 1000.0)
-
-                        i += 2
+                hr, rr_intervals = utils.parse_heartrate_measurement_data(hr_data)
 
                 if not rr_intervals:
                     c.log(f"HR Measurement: {hr} bpm")
