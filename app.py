@@ -1,8 +1,11 @@
 from bleak import BleakClient, BleakScanner
 from rich import console, inspect, panel
+from SimpleWebSocketServer import SimpleWebSocketServer, WebSocket
+from threading import Thread
 import asyncio
 import signal
 import numpy
+import json
 
 from config import polar_profile
 import utils
@@ -12,6 +15,24 @@ stop = False
 hr_data, hr_changed = None, False
 ecg_data, ecg_changed, ecg_first, ecg_prev_timestamp = None, False, True, None
 
+server = None
+
+clients = []
+class ManagerClients(WebSocket):
+    def handleConnected(self):
+        clients.append(self)
+
+
+def websocket_thread():
+    global server
+    server = SimpleWebSocketServer("", 3500, ManagerClients)
+    server.serveforever()
+
+
+def send_all(message):
+    global clients
+    for client in clients:
+        client.sendMessage(message)
 
 def signal_handler(signum, frame):
     global stop
@@ -78,8 +99,10 @@ async def main():
 
                 if not rr_intervals:
                     c.log(f"HR Measurement: {hr} bpm")
+                    send_all(json.dumps({"hr": hr}))
                 else:
                     c.log(f"HR Measurement: {hr} bpm, RR Interval(s): {', '.join(str(rr_interval) for rr_interval in rr_intervals)} received.")
+                    send_all(json.dumps({"hr": hr, "rrintervals": rr_intervals}))
 
             if ecg_changed == True:
                 ecg_changed = False
@@ -104,5 +127,8 @@ async def main():
 
 
 if __name__ == "__main__":
+    thread = Thread(target=websocket_thread)
+    thread.start()
+
     signal.signal(signal.SIGINT, signal_handler)
     asyncio.run(main())
