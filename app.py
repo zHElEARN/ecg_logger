@@ -2,16 +2,10 @@ from bleak import BleakClient, BleakScanner
 from rich import console, inspect, panel
 import asyncio
 import signal
+import numpy
 
-from config.polar_profile import polar_profile
+from config.polar_profile import *
 import utils
-
-
-DEVICE_NAME_UUID = polar_profile["Generic Access Profile"]["characteristics"]["Device Name"]["uuid"]
-MANUFACTURER_NAME_UUID = polar_profile["Device Information"]["characteristics"]["Manufacturer Name String"]["uuid"]
-BATTERY_LEVEL_UUID = polar_profile["Battery Service"]["characteristics"]["Battery Level"]["uuid"]
-
-HEARTRATE_MEASUREMENT_UUID = polar_profile["Heart Rate"]["characteristics"]["Heart Rate Measurement"]["uuid"]
 
 stop = False
 
@@ -66,6 +60,26 @@ async def main():
 
         await polar_client.start_notify(HEARTRATE_MEASUREMENT_UUID, heartrate_handler)
 
+        ecg_data_list = []
+        ecg_first = True
+        prev_timestamp = None
+
+        async def handler(sender, data):
+            nonlocal ecg_data_list, ecg_first, prev_timestamp
+
+            if ecg_first:
+                prev_timestamp = utils.parse_ecg_data(data)
+                ecg_first = False
+                print("first")
+            else:
+                prev_timestamp, ecg_data = utils.parse_ecg_data(data, prev_timestamp)
+                ecg_data_list.extend(ecg_data)
+                print("done")
+
+        ECG_WRITE = bytearray([0x02, 0x00, 0x00, 0x01, 0x82, 0x00, 0x01, 0x01, 0x0E, 0x00])
+        await polar_client.write_gatt_char(PMD_CONTROL_UUID, ECG_WRITE)
+        await polar_client.start_notify(PMD_DATA_UUID, handler)
+
         while True:
             if hr_changed == True:
                 hr_changed = False
@@ -83,6 +97,7 @@ async def main():
                 break
 
         await polar_client.stop_notify(HEARTRATE_MEASUREMENT_UUID)
+        numpy.save("ecg_data", ecg_data_list)
 
 
 asyncio.run(main())
