@@ -4,7 +4,7 @@ import asyncio
 import signal
 import numpy
 
-from config.polar_profile import *
+from config import polar_profile
 import utils
 
 stop = False
@@ -46,9 +46,9 @@ async def main():
     )
 
     async with BleakClient(polar_device) as polar_client:
-        device_name = "".join(map(chr, await polar_client.read_gatt_char(DEVICE_NAME_UUID)))
-        manufacturer_name = "".join(map(chr, await polar_client.read_gatt_char(MANUFACTURER_NAME_UUID)))
-        battery_level = int((await polar_client.read_gatt_char(BATTERY_LEVEL_UUID))[0])
+        device_name = "".join(map(chr, await polar_client.read_gatt_char(polar_profile.DEVICE_NAME_UUID)))
+        manufacturer_name = "".join(map(chr, await polar_client.read_gatt_char(polar_profile.MANUFACTURER_NAME_UUID)))
+        battery_level = int((await polar_client.read_gatt_char(polar_profile.BATTERY_LEVEL_UUID))[0])
 
         c.print(
             panel.Panel(
@@ -58,7 +58,7 @@ async def main():
             )
         )
 
-        await polar_client.start_notify(HEARTRATE_MEASUREMENT_UUID, heartrate_handler)
+        await polar_client.start_notify(polar_profile.HEARTRATE_MEASUREMENT_UUID, heartrate_handler)
 
         ecg_data_list = []
         ecg_first = True
@@ -76,9 +76,8 @@ async def main():
                 ecg_data_list.extend(ecg_data)
                 print("done")
 
-        ECG_WRITE = bytearray([0x02, 0x00, 0x00, 0x01, 0x82, 0x00, 0x01, 0x01, 0x0E, 0x00])
-        await polar_client.write_gatt_char(PMD_CONTROL_UUID, ECG_WRITE)
-        await polar_client.start_notify(PMD_DATA_UUID, handler)
+        await polar_client.write_gatt_char(polar_profile.PMD_CONTROL_UUID, polar_profile.START_ECG_STREAM_BYTES)
+        await polar_client.start_notify(polar_profile.PMD_DATA_UUID, handler)
 
         while True:
             if hr_changed == True:
@@ -96,7 +95,7 @@ async def main():
             if stop == True:
                 break
 
-        await polar_client.stop_notify(HEARTRATE_MEASUREMENT_UUID)
+        await polar_client.stop_notify(polar_profile.HEARTRATE_MEASUREMENT_UUID)
         numpy.save("ecg_data", ecg_data_list)
 
 
