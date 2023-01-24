@@ -1,4 +1,4 @@
-from config.polar_profile import *
+from config import polar_profile
 
 def parse_heartrate_measurement_data(data):
     hr = int.from_bytes(data[1:2], byteorder="little", signed=False)
@@ -17,6 +17,7 @@ def parse_heartrate_measurement_data(data):
 
 def parse_ecg_data(data, prev_timestamp = None):
     timestamp = int.from_bytes(data[1:9], byteorder="little", signed=False)
+    timestamp += polar_profile.timestamp_offset
 
     if prev_timestamp is None:
         return timestamp
@@ -37,8 +38,8 @@ def parse_ecg_data(data, prev_timestamp = None):
     now_timestamp = timestamp
     for i in range(1, len(ecg_list)):
         now_timestamp += each_timestamp
-        ecg_list[i].append(now_timestamp + time_offset)
+        ecg_list[i].append(now_timestamp)
 
-    ecg_list[0].append(timestamp + time_offset)
+    ecg_list[0].append(timestamp)
 
     return timestamp, ecg_list

@@ -7,18 +7,15 @@ import numpy
 from config import polar_profile
 import utils
 
+
 stop = False
+hr_data, hr_changed = None, False
+ecg_data, ecg_changed, ecg_first, ecg_prev_timestamp = None, False, True, None
 
 
 def signal_handler(signum, frame):
     global stop
     stop = True
-
-
-signal.signal(signal.SIGINT, signal_handler)
-
-
-hr_data, hr_changed = None, False
 
 
 async def heartrate_handler(sender, data):
@@ -28,8 +25,16 @@ async def heartrate_handler(sender, data):
     hr_changed = True
 
 
+async def ecg_handler(sender, data):
+    global ecg_data, ecg_changed
+
+    ecg_data = data
+    ecg_changed = True
+
+
 async def main():
     global hr_data, hr_changed
+    global ecg_data, ecg_changed, ecg_first, ecg_prev_timestamp
 
     c = console.Console()
 
@@ -60,25 +65,12 @@ async def main():
 
         await polar_client.start_notify(polar_profile.HEARTRATE_MEASUREMENT_UUID, heartrate_handler)
 
-        ecg_data_list = []
-        ecg_first = True
-        prev_timestamp = None
-
-        async def handler(sender, data):
-            nonlocal ecg_data_list, ecg_first, prev_timestamp
-
-            if ecg_first:
-                prev_timestamp = utils.parse_ecg_data(data)
-                ecg_first = False
-                print("first")
-            else:
-                prev_timestamp, ecg_data = utils.parse_ecg_data(data, prev_timestamp)
-                ecg_data_list.extend(ecg_data)
-                print("done")
-
         await polar_client.write_gatt_char(polar_profile.PMD_CONTROL_UUID, polar_profile.START_ECG_STREAM_BYTES)
-        await polar_client.start_notify(polar_profile.PMD_DATA_UUID, handler)
+        await polar_client.start_notify(polar_profile.PMD_DATA_UUID, ecg_handler)
 
+
+        ecg_data_list = []
+        
         while True:
             if hr_changed == True:
                 hr_changed = False
@@ -89,8 +81,21 @@ async def main():
                     c.log(f"HR Measurement: {hr} bpm")
                 else:
                     c.log(f"HR Measurement: {hr} bpm, RR Interval(s): {', '.join(str(rr_interval) for rr_interval in rr_intervals)} received.")
-            else:
-                await asyncio.sleep(0.1)
+
+            if ecg_changed == True:
+                ecg_changed = False
+
+                if ecg_first == True:
+                    ecg_prev_timestamp = utils.parse_ecg_data(ecg_data)
+                    c.log(f"Received the first ECG signal samples, the last timestamp: {ecg_prev_timestamp}")
+
+                    ecg_first = False
+                else:
+                    ecg_prev_timestamp, ecg_parsed_data = utils.parse_ecg_data(ecg_data, ecg_prev_timestamp)
+                    ecg_data_list.extend(ecg_parsed_data)
+                    c.log(f"Received ECG signal samples, the last timestamp: {ecg_prev_timestamp}")
+
+            await asyncio.sleep(0.01)
 
             if stop == True:
                 break
@@ -99,4 +104,6 @@ async def main():
         numpy.save("ecg_data", ecg_data_list)
 
 
-asyncio.run(main())
+if __name__ == "__main__":
+    signal.signal(signal.SIGINT, signal_handler)
+    asyncio.run(main())
