@@ -68,9 +68,8 @@ async def main():
         await polar_client.write_gatt_char(polar_profile.PMD_CONTROL_UUID, polar_profile.START_ECG_STREAM_BYTES)
         await polar_client.start_notify(polar_profile.PMD_DATA_UUID, ecg_handler)
 
-
         ecg_data_list = []
-        
+
         while True:
             if hr_changed == True:
                 hr_changed = False
