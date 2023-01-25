@@ -26,24 +26,23 @@ def parse_ecg_data(data, prev_timestamp=None):
     samples = data[10:]
 
     offset = 0
-    ecg_list = []
+    ecg_list = [[], []]
     while offset < len(samples):
         ecg = int.from_bytes(samples[offset : offset + 3], byteorder="little", signed=True)
         offset += 3
 
-        ecg_list.append([ecg])
+        ecg_list[0].extend([ecg])
 
     diff_timestamp = timestamp - prev_timestamp
-    each_timestamp = diff_timestamp / (len(ecg_list) - 1)
+    each_timestamp = diff_timestamp / len(ecg_list[0])
 
     now_timestamp = timestamp
-    for i in range(1, len(ecg_list)):
+    for _ in ecg_list[0]:
         now_timestamp += each_timestamp
-        ecg_list[i].append(now_timestamp)
-
-    ecg_list[0].append(timestamp)
+        ecg_list[1].extend([now_timestamp])
 
     return timestamp, ecg_list
+
 
 def websocket_boardcast(clients, message):
     for client in clients:
