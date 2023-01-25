@@ -1,8 +1,11 @@
 from bleak import BleakClient, BleakScanner
 from rich import console, inspect, panel
+from SimpleWebSocketServer import SimpleWebSocketServer, WebSocket
+import threading
 import asyncio
 import signal
 import numpy
+import json
 
 from config import polar_profile
 import utils
@@ -11,6 +14,24 @@ import utils
 stop = False
 hr_data, hr_changed = None, False
 ecg_data, ecg_changed, ecg_first, ecg_prev_timestamp = None, False, True, None
+
+websocket_server = None
+websocket_clients = []
+
+
+class weboskcet_handler(WebSocket):
+    def handleConnected(self):
+        websocket_clients.append(self)
+
+
+def websocket_main():
+    global websocket_server, stop
+    websocket_server = SimpleWebSocketServer("", 3500, weboskcet_handler)
+    while stop == False:
+        websocket_server.serveonce()
+
+
+websocket_thread = threading.Thread(target=websocket_main)
 
 
 def signal_handler(signum, frame):
@@ -33,6 +54,8 @@ async def ecg_handler(sender, data):
 
 
 async def main():
+    global stop
+    global websocket_clients
     global hr_data, hr_changed
     global ecg_data, ecg_changed, ecg_first, ecg_prev_timestamp
 
@@ -42,6 +65,7 @@ async def main():
     polar_device = next((device for device in devices if "Polar H10" in device.name), None)
     if polar_device is None:
         c.print("No devices found")
+        stop = True
         exit()
 
     c.print(
@@ -68,7 +92,7 @@ async def main():
         await polar_client.write_gatt_char(polar_profile.PMD_CONTROL_UUID, polar_profile.START_ECG_STREAM_BYTES)
         await polar_client.start_notify(polar_profile.PMD_DATA_UUID, ecg_handler)
 
-        ecg_data_list = []
+        ecg_data_list = [[], []]
 
         while True:
             if hr_changed == True:
@@ -78,8 +102,10 @@ async def main():
 
                 if not rr_intervals:
                     c.log(f"HR Measurement: {hr} bpm")
+                    utils.websocket_boardcast(websocket_clients, json.dumps({"type": "hr", "heartrate": hr}))
                 else:
                     c.log(f"HR Measurement: {hr} bpm, RR Interval(s): {', '.join(str(rr_interval) for rr_interval in rr_intervals)} received.")
+                    utils.websocket_boardcast(websocket_clients, json.dumps({"type": "hr", "heartrate": hr, "rr_intervals": rr_intervals}))
 
             if ecg_changed == True:
                 ecg_changed = False
@@ -91,8 +117,11 @@ async def main():
                     ecg_first = False
                 else:
                     ecg_prev_timestamp, ecg_parsed_data = utils.parse_ecg_data(ecg_data, ecg_prev_timestamp)
-                    ecg_data_list.extend(ecg_parsed_data)
+                    ecg_data_list[0].extend(ecg_parsed_data[0])
+                    ecg_data_list[1].extend(ecg_parsed_data[1])
                     c.log(f"Received ECG signal samples, the last timestamp: {ecg_prev_timestamp}")
+
+                    utils.websocket_boardcast(websocket_clients, json.dumps({"type": "ecg", "data": ecg_parsed_data[0]}))
 
             await asyncio.sleep(0.01)
 
@@ -104,5 +133,7 @@ async def main():
 
 
 if __name__ == "__main__":
+    websocket_thread.start()
+
     signal.signal(signal.SIGINT, signal_handler)
     asyncio.run(main())
