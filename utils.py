@@ -44,3 +44,7 @@ def parse_ecg_data(data, prev_timestamp=None):
     ecg_list[0].append(timestamp)
 
     return timestamp, ecg_list
+
+def websocket_boardcast(clients, message):
+    for client in clients:
+        client.sendMessage(message)
